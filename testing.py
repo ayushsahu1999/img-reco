@@ -68,6 +68,7 @@ for n in range(1, 7):
                                cv2.THRESH_BINARY_INV,                # invert so foreground will be white, background will be black
                                11,                                   # size of a pixel neighborhood used to calculate threshold value
                                2)
+    #print (a1[0].shape)
     #plt.imshow(np.array(a1))
     #plt.show()
     #print (a1.shape)
@@ -136,9 +137,9 @@ crop_doc = image.crop((image_np.shape[1]//2, image_np.shape[0]//2, image_np.shap
 plt.figure(figsize=(40, 20))
 plt.imshow(np.array(crop_doc))
 plt.show()
-crop_doc_np = np.asarray(crop_doc)
+crop_doc1 = np.asarray(crop_doc)
 
-crop_doc_np = cv2.cvtColor(crop_doc_np, cv2.COLOR_BGR2GRAY)
+crop_doc_np = cv2.cvtColor(crop_doc1, cv2.COLOR_BGR2GRAY)
 crop_doc_np = cv2.GaussianBlur(crop_doc_np, (5,5), 0)
 crop_doc_np = cv2.adaptiveThreshold(crop_doc_np,                           # input image
                            255,                                  # make pixels that pass the threshold full white
@@ -166,6 +167,37 @@ for contourWithData in allContoursWithData:                 # for all contours
 validContoursWithData.sort(key = operator.attrgetter("intRectX"))
 
 print (len(validContoursWithData))
+
+for contourWithData in validContoursWithData:            # for each contour
+                                            # draw a green rect around the current char
+    cv2.rectangle(crop_doc1,                                        # draw rectangle on original testing image
+                  (contourWithData.intRectX, contourWithData.intRectY),     # upper left corner
+                  (contourWithData.intRectX + contourWithData.intRectWidth, contourWithData.intRectY + contourWithData.intRectHeight),      # lower right corner
+                  (0, 255, 0),              # green
+                  2)                        # thickness
+
+    imgROI = crop_doc_np[contourWithData.intRectY : contourWithData.intRectY + contourWithData.intRectHeight,     # crop char out of threshold image
+                       contourWithData.intRectX : contourWithData.intRectX + contourWithData.intRectWidth]
+
+    imgROIResized = cv2.resize(imgROI, (80, 50))             # resize image, this will be more consistent for recognition and storage
+
+    npaROIResized = imgROIResized.reshape((1, 80*50))      # flatten image into 1d numpy array
+
+    npaROIResized = np.float32(npaROIResized)       # convert from 1d numpy array of ints to 1d numpy array of floats
+
+    res = cv2.matchTemplate(npaROIResized, crop_img, cv2.TM_CCOEFF_NORMED)
+    threshold = 0.8
+    loc = np.where(res >= threshold)
+    
+    for pt in zip(*loc[::-1]):
+        cv2.rectangle(npaROIResized, pt, (pt[0]+80, pt[0]+50), (0, 255, 255), 2)
+        
+        
+print (imgROIResized.shape)
+plt.imshow(np.array(imgROIResized))
+plt.show()
+    #retval, npaResults, neigh_resp, dists = kNearest.findNearest(npaROIResized, k = 1)     # call KNN function find_nearest
+
 
 crop_doc_np = crop_doc_np.astype(float)
 crop_doc_np = np.float32(crop_doc_np)
